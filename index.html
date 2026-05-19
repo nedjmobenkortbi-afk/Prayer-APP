@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaouther & Nedjmo - Prayer Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght=500;700&family=Poppins:wght=300;400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ==========================================================================
+           THE BEAUTIFUL DESIGN (CSS VARIABLES)
+           ========================================================================== */
+        :root {
+            --bg-color: #0b0f19;
+            --bg-gradient: radial-gradient(circle at 10% 20%, rgba(214, 134, 255, 0.05) 0%, transparent 40%),
+                           radial-gradient(circle at 90% 80%, rgba(0, 210, 255, 0.05) 0%, transparent 40%);
+            --container-bg: linear-gradient(145deg, #0e1424, #080c16);
+            --card-bg: rgba(20, 27, 45, 0.7);
+            --border-color: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.03);
+            --text-color: #f0f3f8;
+            --text-muted: #8a99ad;
+            --btn-bg: rgba(255, 255, 255, 0.03);
+            --btn-border: rgba(255, 255, 255, 0.1);
+            
+            --kaouther-color: #d686ff;
+            --nedjmo-color: #00d2ff;
+            --gold-color: #ffd700;
+            --lantern-glow: rgba(255, 215, 0, 0.65);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f3f6fa;
+            --bg-gradient: radial-gradient(circle at 10% 20%, rgba(214, 134, 255, 0.08) 0%, transparent 40%),
+                           radial-gradient(circle at 90% 80%, rgba(0, 210, 255, 0.08) 0%, transparent 40%);
+            --container-bg: linear-gradient(145deg, #ffffff, #f9fbfd);
+            --card-bg: rgba(240, 244, 250, 0.8);
+            --border-color: rgba(0, 0, 0, 0.06);
+            --card-border: rgba(0, 0, 0, 0.02);
+            --text-color: #1e2638;
+            --text-muted: #62728d;
+            --btn-bg: rgba(0, 0, 0, 0.02);
+            --btn-border: rgba(0, 0, 0, 0.08);
+            
+            --kaouther-color: #a840e6;
+            --nedjmo-color: #009ec0;
+            --gold-color: #bfa300;
+            --lantern-glow: rgba(191, 163, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            background-image: var(--bg-gradient);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px 12px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Fixed: allows natural scrolling down on phones */
+            position: relative;
+            overflow-x: hidden;
+            transition: background 0.4s ease, color 0.4s ease;
+        }
+
+        /* Password Screen Styling */
+        #password-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .pass-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--btn-border);
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            text-align: center;
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            margin: 20px 0;
+            outline: none;
+        }
+        [data-theme="light"] .pass-input { background: #fff; color: #000; border: 1px solid #ccc; }
+
+        .pass-btn {
+            background: var(--gold-color);
+            color: #0b0f19;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .error-msg { color: #ff4d4d; font-size: 0.8rem; margin-top: 10px; min-height: 18px; }
+
+        /* Main Dashboard Core Layout Container */
+        #main-app-content {
+            display: none; /* Managed by JS */
+            width: 100%;
+            max-width: 650px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 35px 16px 25px 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            position: relative;
+        }
+
+        /* Lantern Placement */
+        .lantern-container {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            left: 0;
+            padding: 0 15px;
+            height: 140px;
+            pointer-events: none; 
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .lantern {
+            position: relative;
+            transform-origin: top center; 
+            animation: swingLantern 4s ease-in-out infinite alternate;
+        }
+        .lantern.right { animation-duration: 4.5s; }
+
+        .lantern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(to bottom, rgba(255, 215, 0, 0.1), var(--gold-color));
+        }
+
+        .lantern-svg {
+            margin-top: 30px; 
+            width: 50px;
+            height: 90px;
+            filter: drop-shadow(0 0 12px var(--lantern-glow));
+        }
+
+        @keyframes swingLantern {
+            0% { transform: rotate(-4deg); }
+            100% { transform: rotate(4deg); }
+        }
+
+        .theme-toggle-wrapper {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 20;
+        }
+
+        .theme-btn {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .bismillah {
+            font-family: 'Cinzel', serif;
+            color: var(--gold-color);
+            font-size: 1.3rem;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .main-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .title-k { color: var(--kaouther-color); }
+        .title-amp { color: var(--gold-color); }
+        .title-n { color: var(--nedjmo-color); }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+        }
+
+        /* Profiles Grid Layout Configuration */
+        .profiles-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .profile-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 12px;
+            border: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+        }
+        .profile-card.k-card { border-left: 4px solid var(--kaouther-color); }
+        .profile-card.n-card { border-left: 4px solid var(--nedjmo-color); }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .k-card .avatar { background: rgba(214, 134, 255, 0.1); color: var(--kaouther-color); border: 1px solid var(--kaouther-color); }
+        .n-card .avatar { background: rgba(0, 210, 255, 0.1); color: var(--nedjmo-color); border: 1px solid var(--nedjmo-color); }
+
+        .user-info { flex-grow: 1; min-width: 0; }
+        .user-name { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        
+        .progress-container {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        [data-theme="light"] .progress-container { background: rgba(0, 0, 0, 0.05); }
+
+        .progress-bar { width: 0%; height: 100%; transition: width 0.4s ease; }
+        .k-card .progress-bar { background: var(--kaouther-color); }
+        .n-card .progress-bar { background: var(--nedjmo-color); }
+
+        .streak-container {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #ff9800;
+        }
+
+        .score-badge { text-align: center; min-width: 35px; }
+        .score-val { font-size: 1.1rem; font-weight: 600; }
+        .score-lbl { font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase; }
+
+        .winner-banner {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px dashed var(--gold-color);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* Prayer Rows Layout Setup */
+        .prayer-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 1.5fr 2fr 2fr;
+            padding: 0 10px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .table-header div:first-child { text-align: left; }
+
+        .prayer-row {
+            display: grid;
+            grid-template-columns: 1.5fr 2fr 2fr;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px 10px;
+            border-radius: 14px;
+        }
+        .prayer-name { font-weight: 600; font-size: 0.9rem; text-align: left; }
+
+        .action-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+
+        .pray-btn {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            color: var(--text-color);
+            padding: 8px 0;
+            border-radius: 20px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.8rem;
+            cursor: pointer;
+            width: 90%;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .k-btn.done { background: rgba(214, 134, 255, 0.15); border-color: var(--kaouther-color); color: var(--kaouther-color); cursor: default; }
+        .n-btn.done { background: rgba(0, 210, 255, 0.15); border-color: var(--nedjmo-color); color: var(--nedjmo-color); cursor: default; }
+
+        .timestamp { font-size: 0.7rem; color: var(--gold-color); font-weight: 500; }
+
+        /* History Panel */
+        .history-panel {
+            background: rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 15px 10px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .history-title {
+            font-family: 'Cinzel', serif;
+            font-size: 0.95rem;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .history-row {
+            display: grid;
+            grid-template-columns: 2fr 3fr 3fr;
+            font-size: 0.75rem;
+            padding: 6px 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .history-row:last-child { border-bottom: none; }
+        .hist-date { color: var(--text-muted); }
+        .hist-score { text-center: center; font-weight: 600; }
+
+        .reset-wrapper { margin-top: 10px; }
+        .danger-reset-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 77, 77, 0.25);
+            color: rgba(255, 77, 77, 0.6);
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .footer { margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        .moon-icon { color: var(--gold-color); font-size: 1.3rem; margin-bottom: 6px; }
+        .blessing { color: var(--gold-color); font-family: 'Cinzel', serif; font-size: 1rem; margin-bottom: 6px; }
+        .quote { font-size: 0.7rem; color: var(--text-muted); font-style: italic; line-height: 1.4; max-width: 450px; margin: 0 auto; }
+
+        /* ==========================================================================
+           RESPONSIVE RE-STACKING RULES (THE CORE FIXED ADJUSTMENT)
+           ========================================================================== */
+        @media (max-width: 480px) {
+            body { padding: 10px 8px; }
+            .container { padding: 30px 10px 20px 10px; }
+            .profiles-grid { grid-template-columns: 1fr; gap: 10px; } /* Stack profiles vertically */
+            .main-title { font-size: 1.5rem; }
+            .bismillah { font-size: 1.1rem; }
+            .lantern-svg { width: 40px; height: 75px; }
+            .pray-btn { font-size: 0.75rem; padding: 6px 0; }
+            .prayer-name { font-size: 0.8rem; }
+            .timestamp { font-size: 0.65rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="password-screen">
+        <div class="bismillah" style="font-size: 1.1rem; margin-top:0;">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</div>
+        <h2 style="font-family: 'Cinzel', serif; margin-bottom: 5px; color: var(--gold-color);">Private Vault</h2>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">Please enter the companion passkey to sync.</p>
+        <input type="password" id="vault-pass" class="pass-input" placeholder="••••" onkeydown="if(event.key==='Enter') checkPassword()">
+        <button class="pass-btn" onclick="checkPassword()">Unlock Gateway</button>
+        <div id="error-box" class="error-msg"></div>
+    </div>
+
+    <div id="main-app-content">
+        <div class="container">
+            <div class="lantern-container">
+                <div class="lantern left">
+                    <svg class="lantern-svg" viewBox="0 0 100 160">
+                        <circle cx="50" cy="14" r="8" fill="none" stroke="#ffd700" stroke-width="4"/>
+                        <path d="M40,22 L60,22 L55,14 L45,14 Z" fill="#ffd700"/>
+                        <path d="M30,36 L70,36 L62,22 L38,22 Z" fill="#b39600" stroke="#ffd700" stroke-width="2"/>
+                        <path d="M22,50 L78,50 L70,36 L30,36 Z" fill="#ffd700"/>
+                        <path d="M22,50 L78,50 L88,105 L12,105 Z" fill="rgba(255, 215, 0, 0.2)" stroke="#ffd700" stroke-width="4"/>
+                        <path d="M35,105 L35,75 C35,60 42,55 50,55 C58,55 65,60 65,75 L65,105 Z" fill="rgba(255, 215, 0, 0.35)" stroke="#ffd700" stroke-width="1.5"/>
+                        <circle cx="50" cy="82" r="10" fill="#ffffff"/>
+                        <path d="M15,105 L85,105 L75,125 L25,125 Z" fill="#b39600" stroke="#ffd700" stroke-width="3"/>
+                        <path d="M28,125 L72,125 L65,140 L35,140 Z" fill="#ffd700"/>
+                        <polygon points="50,152 44,140 56,140" fill="#ffd700"/>
+                    </svg>
+                </div>
+                <div class="lantern right">
+                    <svg class="lantern-svg" viewBox="0 0 100 160">
+                        <circle cx="50" cy="14" r="8" fill="none" stroke="#ffd700" stroke-width="4"/>
+                        <path d="M40,22 L60,22 L55,14 L45,14 Z" fill="#ffd700"/>
+                        <path d="M30,36 L70,36 L62,22 L38,22 Z" fill="#b39600" stroke="#ffd700" stroke-width="2"/>
+                        <path d="M22,50 L78,50 L70,36 L30,36 Z" fill="#ffd700"/>
+                        <path d="M22,50 L78,50 L88,105 L12,105 Z" fill="rgba(255, 215, 0, 0.2)" stroke="#ffd700" stroke-width="4"/>
+                        <path d="M35,105 L35,75 C35,60 42,55 50,55 C58,55 65,60 65,75 L65,105 Z" fill="rgba(255, 215, 0, 0.35)" stroke="#ffd700" stroke-width="1.5"/>
+                        <circle cx="50" cy="82" r="10" fill="#ffffff"/>
+                        <path d="M15,105 L85,105 L75,125 L25,125 Z" fill="#b39600" stroke="#ffd700" stroke-width="3"/>
+                        <path d="M28,125 L72,125 L65,140 L35,140 Z" fill="#ffd700"/>
+                        <polygon points="50,152 44,140 56,140" fill="#ffd700"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="theme-toggle-wrapper">
+                <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ Day Mode</button>
+            </div>
+
+            <div class="bismillah">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</div>
+            <h1 class="main-title">
+                <span class="title-k">Kaouther</span> 
+                <span class="title-amp">&amp;</span> 
+                <span class="title-n">Nedjmo</span>
+            </h1>
+            <div class="subtitle">Daily Prayer Companion</div>
+
+            <div class="profiles-grid">
+                <div class="profile-card k-card">
+                    <div class="avatar">K</div>
+                    <div class="user-info">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="user-name">Kaouther</div>
+                            <div class="streak-container">🔥 <span id="k-streak">0</span></div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="k-progress"></div>
+                        </div>
+                    </div>
+                    <div class="score-badge">
+                        <div class="score-val" id="k-score">0/5</div>
+                        <div class="score-lbl">Done</div>
+                    </div>
+                </div>
+
+                <div class="profile-card n-card">
+                    <div class="avatar">N</div>
+                    <div class="user-info">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="user-name">Nedjmo</div>
+                            <div class="streak-container">🔥 <span id="n-streak">0</span></div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="n-progress"></div>
+                        </div>
+                    </div>
+                    <div class="score-badge">
+                        <div class="score-val" id="n-score">0/5</div>
+                        <div class="score-lbl">Done</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="winner-banner" id="winner-text">⌛ Connecting to database...</div>
+
+            <div class="table-header">
+                <div>Prayer</div>
+                <div>Kaouther</div>
+                <div>Nedjmo</div>
+            </div>
+
+            <div class="prayer-list">
+                <div class="prayer-row">
+                    <div class="prayer-name">Alfadjer</div>
+                    <div class="action-cell">
+                        <button class="pray-btn k-btn" id="fajr-k" onclick="trackPrayer('fajr', 'k')">Prayed</button>
+                        <span class="timestamp" id="fajr-k-time"></span>
+                    </div>
+                    <div class="action-cell">
+                        <button class="pray-btn n-btn" id="fajr-n" onclick="trackPrayer('fajr', 'n')">Prayed</button>
+                        <span class="timestamp" id="fajr-n-time"></span>
+                    </div>
+                </div>
+
+                <div class="prayer-row">
+                    <div class="prayer-name">Duhr</div>
+                    <div class="action-cell">
+                        <button class="pray-btn k-btn" id="dhuhr-k" onclick="trackPrayer('dhuhr', 'k')">Prayed</button>
+                        <span class="timestamp" id="dhuhr-k-time"></span>
+                    </div>
+                    <div class="action-cell">
+                        <button class="pray-btn n-btn" id="dhuhr-n" onclick="trackPrayer('dhuhr', 'n')">Prayed</button>
+                        <span class="timestamp" id="dhuhr-n-time"></span>
+                    </div>
+                </div>
+
+                <div class="prayer-row">
+                    <div class="prayer-name">Asr</div>
+                    <div class="action-cell">
+                        <button class="pray-btn k-btn" id="asr-k" onclick="trackPrayer('asr', 'k')">Prayed</button>
+                        <span class="timestamp" id="asr-k-time"></span>
+                    </div>
+                    <div class="action-cell">
+                        <button class="pray-btn n-btn" id="asr-n" onclick="trackPrayer('asr', 'n')">Prayed</button>
+                        <span class="timestamp" id="asr-n-time"></span>
+                    </div>
+                </div>
+
+                <div class="prayer-row">
+                    <div class="prayer-name">Maghreb</div>
+                    <div class="action-cell">
+                        <button class="pray-btn k-btn" id="maghrib-k" onclick="trackPrayer('maghrib', 'k')">Prayed</button>
+                        <span class="timestamp" id="maghrib-k-time"></span>
+                    </div>
+                    <div class="action-cell">
+                        <button class="pray-btn n-btn" id="maghrib-n" onclick="trackPrayer('maghrib', 'n')">Prayed</button>
+                        <span class="timestamp" id="maghrib-n-time"></span>
+                    </div>
+                </div>
+
+                <div class="prayer-row">
+                    <div class="prayer-name">Ichaa</div>
+                    <div class="action-cell">
+                        <button class="pray-btn k-btn" id="isha-k" onclick="trackPrayer('isha', 'k')">Prayed</button>
+                        <span class="timestamp" id="isha-k-time"></span>
+                    </div>
+                    <div class="action-cell">
+                        <button class="pray-btn n-btn" id="isha-n" onclick="trackPrayer('isha', 'n')">Prayed</button>
+                        <span class="timestamp" id="isha-n-time"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="history-panel">
+                <div class="history-title">📊 This Week's Tracker</div>
+                <div id="history-container">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:5px;">Loading logs...</div>
+                </div>
+            </div>
+
+            <div class="reset-wrapper">
+                <button class="danger-reset-btn" onclick="manualReset()">🔄 Reset Daily Log</button>
+            </div>
+
+            <div class="footer">
+                <div class="moon-icon" id="footer-icon">🌙</div>
+                <div class="blessing">May Allah accept your prayers</div>
+                <div class="quote">"The first matter that the slave will be brought to account for on the Day of Judgment is the prayer." — Al-Nasa'i</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const APP_VAULT_PASSWORD = "1234";
+        const SUPABASE_URL = "https://rtfouypbactrizxdpltb.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Zm91eXBiYWN0cml6eGRwbHRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIzNjA1MDcsImV4cCI6MjA1NzkzNjUwN30.82bQ96v8pWwreVp-E9_2O0n_q2N3f2k4N2Z5bDdkM2c=";
+        
+        let _supabase;
+        let appData = {
+            id: "", date: "",
+            k: { fajr: null, dhuhr: null, asr: null, maghrib: null, isha: null },
+            n: { fajr: null, dhuhr: null, asr: null, maghrib: null, isha: null }
+        };
+
+        function getTodayString() {
+            const today = new Date();
+            return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        }
+
+        function checkPasscodeOnLoad() {
+            const savedTheme = localStorage.getItem('prayer_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButtonUI(savedTheme);
+
+            if (localStorage.getItem('vault_unlocked') === 'true') {
+                showAppDashboard();
+            }
+        }
+
+        function checkPassword() {
+            if (document.getElementById('vault-pass').value === APP_VAULT_PASSWORD) {
+                localStorage.setItem('vault_unlocked', 'true');
+                showAppDashboard();
+            } else {
+                document.getElementById('error-box').innerText = "Incorrect passcode.";
+                document.getElementById('vault-pass').value = "";
+            }
+        }
+
+        function showAppDashboard() {
+            document.getElementById('password-screen').style.display = 'none';
+            document.getElementById('main-app-content').style.display = 'flex';
+            _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            initApp();
+        }
+
+        async function initApp() {
+            const todayStr = getTodayString();
+            appData.id = todayStr;
+            appData.date = todayStr;
+
+            try {
+                let { data, error } = await _supabase.from('prayer_sync').select('*').eq('id', todayStr).single();
+                if (error && error.code === 'PGRST116') {
+                    const blankRow = {
+                        id: todayStr, date: todayStr,
+                        k_fajr: null, k_dhuhr: null, k_asr: null, k_maghrib: null, k_isha: null,
+                        n_fajr: null, n_dhuhr: null, n_asr: null, n_maghrib: null, n_isha: null
+                    };
+                    await _supabase.from('prayer_sync').insert([blankRow]);
+                } else if (data) {
+                    mapDatabaseToAppData(data);
+                }
+                fetchHistoryAndStreaks();
+            } catch (err) { console.error(err); }
+
+            renderUI();
+
+            _supabase.channel('schema-db-changes')
+                .on('postgres_changes', { event: '*', filter: `id=eq.${todayStr}`, schema: 'public', table: 'prayer_sync' }, payload => {
+                    if (payload.new) {
+                        mapDatabaseToAppData(payload.new);
+                        renderUI();
+                        fetchHistoryAndStreaks();
+                    }
+                }).subscribe();
+        }
+
+        function mapDatabaseToAppData(dbRow) {
+            appData.k.fajr = dbRow.k_fajr; appData.k.dhuhr = dbRow.k_dhuhr; appData.k.asr = dbRow.k_asr; appData.k.maghrib = dbRow.k_maghrib; appData.k.isha = dbRow.k_isha;
+            appData.n.fajr = dbRow.n_fajr; appData.n.dhuhr = dbRow.n_dhuhr; appData.n.asr = dbRow.n_asr; appData.n.maghrib = dbRow.n_maghrib; appData.n.isha = dbRow.n_isha;
+        }
+
+        async function fetchHistoryAndStreaks() {
+            try {
+                let { data, error } = await _supabase.from('prayer_sync').select('*').order('date', { ascending: false }).limit(7);
+                if (data) {
+                    calculateStreaks(data);
+                    renderHistoryUI(data);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function calculateStreaks(allRows) {
+            let kStreak = 0, nStreak = 0;
+            let kBroken = false, nBroken = false;
+            const todayStr = getTodayString();
+
+            for (let i = 0; i < allRows.length; i++) {
+                const row = allRows[i];
+                const isToday = row.date === todayStr;
+
+                // Kaouther Streak Check
+                const kDone = (row.k_fajr && row.k_dhuhr && row.k_asr && row.k_maghrib && row.k_isha);
+                if (!kBroken) {
+                    if (kDone) kStreak++;
+                    else if (!isToday) kBroken = true; 
+                }
+
+                // Nedjmo Streak Check
+                const nDone = (row.n_fajr && row.n_dhuhr && row.n_asr && row.n_maghrib && row.n_isha);
+                if (!nBroken) {
+                    if (nDone) nStreak++;
+                    else if (!isToday) nBroken = true;
+                }
+            }
+            document.getElementById('k-streak').innerText = kStreak;
+            document.getElementById('n-streak').innerText = nStreak;
+        }
+
+        function renderHistoryUI(rows) {
+            const container = document.getElementById('history-container');
+            if (rows.length === 0) {
+                container.innerHTML = `<div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">No history recorded yet.</div>`;
+                return;
+            }
+            let html = "";
+            rows.forEach(r => {
+                let kCount = [r.k_fajr, r.k_dhuhr, r.k_asr, r.k_maghrib, r.k_isha].filter(Boolean).length;
+                let nCount = [r.n_fajr, r.n_dhuhr, r.n_asr, r.n_maghrib, r.n_isha].filter(Boolean).length;
+                
+                // Format dates elegantly
+                const dObj = new Date(r.date);
+                const options = { weekday: 'short', month: 'short', day: 'numeric' };
+                const formattedDate = dObj.toLocaleDateString('en-US', options);
+
+                html += `
+                    <div class="history-row">
+                        <div class="hist-date">${formattedDate}</div>
+                        <div class="hist-score" style="color:var(--kaouther-color)">Kaouther: ${kCount}/5</div>
+                        <div class="hist-score" style="color:var(--nedjmo-color)">Nedjmo: ${nCount}/5</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function trackPrayer(prayer, user) {
+            if (appData[user][prayer] !== null) return;
+            const now = new Date();
+            const timeString = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0') + ":" + String(now.getSeconds()).padStart(2, '0');
+            appData[user][prayer] = timeString;
+            renderUI();
+            const updatePayload = {};
+            updatePayload[`${user}_${prayer}`] = timeString;
+            await _supabase.from('prayer_sync').update(updatePayload).eq('id', appData.id);
+        }
+
+        async function manualReset() {
+            if (confirm("Reset today's logs?")) {
+                const resetPayload = {
+                    k_fajr: null, k_dhuhr: null, k_asr: null, k_maghrib: null, k_isha: null,
+                    n_fajr: null, n_dhuhr: null, n_asr: null, n_maghrib: null, n_isha: null
+                };
+                appData.k = { fajr: null, dhuhr: null, asr: null, maghrib: null, isha: null };
+                appData.n = { fajr: null, dhuhr: null, asr: null, maghrib: null, isha: null };
+                renderUI();
+                await _supabase.from('prayer_sync').update(resetPayload).eq('id', appData.id);
+            }
+        }
+
+        function renderUI() {
+            const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+            let kCount = 0, nCount = 0, winPoints = { k: 0, n: 0 };
+
+            prayers.forEach(p => {
+                const kTime = appData.k[p], kBtn = document.getElementById(`${p}-k`), kTimeSpan = document.getElementById(`${p}-k-time`);
+                if (kTime) { kCount++; kBtn.innerText = "✓ Done"; kBtn.classList.add('done'); kTimeSpan.innerText = kTime.substring(0,5); }
+                else { kBtn.innerText = "Prayed"; kBtn.classList.remove('done'); kTimeSpan.innerText = ""; }
+
+                const nTime = appData.n[p], nBtn = document.getElementById(`${p}-n`), nTimeSpan = document.getElementById(`${p}-n-time`);
+                if (nTime) { nCount++; nBtn.innerText = "✓ Done"; nBtn.classList.add('done'); nTimeSpan.innerText = nTime.substring(0,5); }
+                else { nBtn.innerText = "Prayed"; nBtn.classList.remove('done'); nTimeSpan.innerText = ""; }
+
+                if (kTime && nTime) {
+                    if (kTime < nTime) winPoints.k++;
+                    else if (nTime < kTime) winPoints.n++;
+                }
+            });
+
+            document.getElementById('k-score').innerText = `${kCount}/5`;
+            document.getElementById('k-progress').style.width = `${(kCount / 5) * 100}%`;
+            document.getElementById('n-score').innerText = `${nCount}/5`;
+            document.getElementById('n-progress').style.width = `${(nCount / 5) * 100}%`;
+
+            const banner = document.getElementById('winner-text');
+            if (winPoints.k === 0 && winPoints.n === 0) {
+                banner.innerHTML = (kCount > 0 || nCount > 0) ? "⚡ Waiting for both to log to check the speed match!" : "✨ Log your first prayer to start today's race!";
+            } else {
+                if (winPoints.k > winPoints.n) banner.innerHTML = `👑 <b>Kaouther</b> is leading today's speed race (${winPoints.k} vs ${winPoints.n})!`;
+                else if (winPoints.n > winPoints.k) banner.innerHTML = `👑 <b>Nedjmo</b> is leading today's speed race (${winPoints.n} vs ${winPoints.k})!`;
+                else banner.innerHTML = "🤝 It's a perfect tie on speed right now!";
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('prayer_theme', newTheme);
+            updateThemeButtonUI(newTheme);
+        }
+
+        function updateThemeButtonUI(theme) {
+            const btn = document.getElementById('theme-btn');
+            btn.innerHTML = (theme === 'light') ? "🌙 Night Mode" : "☀️ Day Mode";
+        }
+
+        checkPasscodeOnLoad();
+    </script>
+</body>
+</html>
